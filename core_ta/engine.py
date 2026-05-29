@@ -27,10 +27,12 @@ def _register_builtin_backends() -> dict[str, BackendProtocol]:
     from .backends.pandas_backend import PandasBackend
     from .backends.talib_backend import TALibBackend
     from .backends.pandas_ta_backend import PandasTABackend
+    from .backends.tulipy_backend import TulipyBackend
     return {
         "pandas": PandasBackend(),
         "talib": TALibBackend(),
         "pandas_ta": PandasTABackend(),
+        "tulipy": TulipyBackend(),
     }
 
 

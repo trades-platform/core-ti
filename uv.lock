@@ -52,6 +52,9 @@ dev = [
 pandas-ta = [
     { name = "pandas-ta" },
 ]
+tulipy = [
+    { name = "tulipy" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -62,8 +65,9 @@ requires-dist = [
     { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "ta-lib", specifier = ">=0.6.8" },
+    { name = "tulipy", marker = "extra == 'tulipy'", specifier = ">=0.4.0" },
 ]
-provides-extras = ["pandas-ta", "dev"]
+provides-extras = ["pandas-ta", "tulipy", "dev"]
 
 [[package]]
 name = "coverage"
@@ -466,6 +470,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/09/a9/6ba95a270c6f1fbcd
 wheels = [
     { url = "https://files.pythonhosted.org/packages/16/e1/3079a9ff9b8e11b846c6ac5c8b5bfb7ff225eee721825310c91b3b50304f/tqdm-4.67.3-py3-none-any.whl", hash = "sha256:ee1e4c0e59148062281c49d80b25b67771a127c85fc9676d3be5f243206826bf", size = 78374, upload-time = "2026-02-03T17:35:50.982Z" },
 ]
+
+[[package]]
+name = "tulipy"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2c/fc/685a3fe73a66ed35332058c2e22b2ed63b7725ec32817753f11c06f48792/tulipy-0.4.0.tar.gz", hash = "sha256:fbc31727ef7657c93ad910bfdce65fecc6aaa7a5e961fe00240718e7a3fc79d8", size = 110271, upload-time = "2019-04-11T03:37:12.125Z" }
 
 [[package]]
 name = "tzdata"

@@ -9,7 +9,7 @@ import pytest
 SIZES = [1_000, 10_000, 100_000]
 SIZE_IDS = ["1K", "10K", "100K"]
 
-BACKENDS = ["pandas", "talib", "pandas_ta"]
+BACKENDS = ["pandas", "talib", "pandas_ta", "tulipy"]
 
 
 def _make_ohlcv(n: int, seed: int = 42) -> pd.DataFrame:
@@ -47,6 +47,13 @@ def get_backend(name: str):
             pytest.skip("pandas-ta not installed")
         from core_ta.backends.pandas_ta_backend import PandasTABackend
         return PandasTABackend()
+    if name == "tulipy":
+        try:
+            import tulipy  # noqa: F401
+        except ImportError:
+            pytest.skip("tulipy not installed")
+        from core_ta.backends.tulipy_backend import TulipyBackend
+        return TulipyBackend()
     raise ValueError(f"Unknown backend: {name}")
 
 

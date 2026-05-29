@@ -63,7 +63,7 @@ def generate_report(results: list[dict]) -> str:
         indicator, backend, size, median_ms = parse_result(bm)
         groups[indicator][size].append((backend, median_ms))
 
-    backends = ["pandas", "talib", "pandas_ta"]
+    backends = sorted({b for entries in groups.values() for size_entries in entries.values() for b, _ in size_entries})
     lines = ["## Benchmark Results\n"]
     lines.append("Median times per indicator, grouped by data size. **Bold** = fastest.\n")
 
