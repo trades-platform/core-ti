@@ -51,9 +51,6 @@ dev = [
 pandas-ta = [
     { name = "pandas-ta" },
 ]
-talib = [
-    { name = "ta-lib" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -63,9 +60,8 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "ta-lib", specifier = ">=0.6.8" },
-    { name = "ta-lib", marker = "extra == 'talib'", specifier = ">=0.4" },
 ]
-provides-extras = ["talib", "pandas-ta", "dev"]
+provides-extras = ["pandas-ta", "dev"]
 
 [[package]]
 name = "coverage"

@@ -27,7 +27,7 @@ class TALibBackend:
     def supports(self, indicator_name: str) -> bool:
         if not self._available:
             return False
-        return indicator_name in {"sma", "ema", "wma", "rsi", "atr"}
+        return indicator_name in {"sma", "ema", "wma", "rsi", "atr", "bb", "macd"}
 
     def compute(
         self,
@@ -67,4 +67,31 @@ class TALibBackend:
                 ),
                 index=inputs["close"].index,
             )
+        if indicator_name == "bb":
+            upper, mid, lower = talib.BBANDS(
+                inputs["close"].values,
+                timeperiod=params["period"],
+                nbdevup=params["std"],
+                nbdevdn=params["std"],
+                matype=0,
+            )
+            p = params["period"]
+            return pd.DataFrame({
+                f"bb_{p}_upper": upper,
+                f"bb_{p}_mid": mid,
+                f"bb_{p}_lower": lower,
+            }, index=inputs["close"].index)
+        if indicator_name == "macd":
+            line, signal, hist = talib.MACD(
+                inputs["close"].values,
+                fastperiod=params["fast"],
+                slowperiod=params["slow"],
+                signalperiod=params["signal"],
+            )
+            fast, slow = params["fast"], params["slow"]
+            return pd.DataFrame({
+                f"macd_{fast}_{slow}_line": line,
+                f"macd_{fast}_{slow}_signal": signal,
+                f"macd_{fast}_{slow}_hist": hist,
+            }, index=inputs["close"].index)
         raise NotImplementedError(f"talib backend: '{indicator_name}' not implemented")
