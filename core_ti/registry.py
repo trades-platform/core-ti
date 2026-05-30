@@ -79,7 +79,7 @@ def _extract_doc(obj: Any) -> str:
 
 def _detect_source(obj: Any) -> str:
     module = getattr(obj, "__module__", "") or ""
-    if "core_ta.indicators" in module:
+    if "core_ti.indicators" in module:
         return "builtin"
     return "user"
 

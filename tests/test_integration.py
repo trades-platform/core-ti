@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from core_ta import Column, IndicatorEngine, Param, register
-from core_ta.registry import (
+from core_ti import Column, IndicatorEngine, Param, register
+from core_ti.registry import (
     CircularDependencyError,
     IndicatorNotFoundError,
     MissingColumnError,
@@ -256,7 +256,7 @@ class TestErrorCases:
 
 class TestPackageImports:
     def test_top_level_exports(self):
-        from core_ta import Column, IndicatorEngine, Param, register
+        from core_ti import Column, IndicatorEngine, Param, register
         assert IndicatorEngine is not None
         assert register is not None
         assert Column is not None

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from core_ta.indicators.ma_cross import MACross
+from core_ti.indicators.ma_cross import MACross
 
 
 def _sma(series: pd.Series, period: int) -> pd.Series:
@@ -72,7 +72,7 @@ class TestMACrossEngine:
     """End-to-end test: DAG resolves SMA dependencies automatically."""
 
     def test_engine_ma_cross_dag_resolution(self):
-        from core_ta import IndicatorEngine
+        from core_ti import IndicatorEngine
 
         rng = np.random.default_rng(42)
         n = 200
@@ -95,7 +95,7 @@ class TestMACrossEngine:
         assert set(valid.unique()) <= {1.0, -1.0}
 
     def test_engine_custom_periods(self):
-        from core_ta import IndicatorEngine
+        from core_ti import IndicatorEngine
 
         rng = np.random.default_rng(42)
         n = 200

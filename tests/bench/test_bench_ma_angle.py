@@ -1,7 +1,7 @@
 """Benchmark: MA Angle via IndicatorEngine (end-to-end DAG resolution)."""
 import pytest
 
-from core_ta import IndicatorEngine
+from core_ti import IndicatorEngine
 
 pytestmark = pytest.mark.benchmark(group="ma_angle")
 

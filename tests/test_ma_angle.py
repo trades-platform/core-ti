@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from core_ta.indicators.ma_angle import MaAngle
+from core_ti.indicators.ma_angle import MaAngle
 
 
 def _make_ohlcv(n: int, seed: int = 42) -> pd.DataFrame:
@@ -117,7 +117,7 @@ class TestMaAngleEngine:
     """End-to-end test: DAG resolves SMA and ATR dependencies automatically."""
 
     def test_engine_ma_angle_dag_resolution(self):
-        from core_ta import IndicatorEngine
+        from core_ti import IndicatorEngine
 
         rng = np.random.default_rng(42)
         n = 200

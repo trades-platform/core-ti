@@ -31,35 +31,35 @@ def ohlcv(request) -> pd.DataFrame:
 
 def get_backend(name: str):
     if name == "pandas":
-        from core_ta.backends.pandas_backend import PandasBackend
+        from core_ti.backends.pandas_backend import PandasBackend
         return PandasBackend()
     if name == "talib":
         try:
             import talib  # noqa: F401
         except ImportError:
             pytest.skip("TA-Lib not installed")
-        from core_ta.backends.talib_backend import TALibBackend
+        from core_ti.backends.talib_backend import TALibBackend
         return TALibBackend()
     if name == "pandas_ta":
         try:
             import pandas_ta  # noqa: F401
         except ImportError:
             pytest.skip("pandas-ta not installed")
-        from core_ta.backends.pandas_ta_backend import PandasTABackend
+        from core_ti.backends.pandas_ta_backend import PandasTABackend
         return PandasTABackend()
     if name == "tulipy":
         try:
             import tulipy  # noqa: F401
         except ImportError:
             pytest.skip("tulipy not installed")
-        from core_ta.backends.tulipy_backend import TulipyBackend
+        from core_ti.backends.tulipy_backend import TulipyBackend
         return TulipyBackend()
     raise ValueError(f"Unknown backend: {name}")
 
 
 def _prepare_inputs(backend_name: str, indicator: str, inputs: dict, params: dict):
     if indicator == "macd" and backend_name == "pandas":
-        from core_ta.backends.pandas_backend import PandasBackend
+        from core_ti.backends.pandas_backend import PandasBackend
         pd_be = PandasBackend()
         inputs[f"ema_{params['fast']}"] = pd_be.compute("ema", inputs, {"period": params["fast"]})
         inputs[f"ema_{params['slow']}"] = pd_be.compute("ema", inputs, {"period": params["slow"]})
