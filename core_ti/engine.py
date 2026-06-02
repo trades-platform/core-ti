@@ -11,6 +11,7 @@ import pandas as pd
 
 from .backends.base import BackendProtocol, nan_safe_compute
 from .backends.pandas_backend import PandasBackend
+from ._config import _resolve_default_backend
 from .dag import DependencyGraph
 from .registry import (
     IndicatorNotFoundError,
@@ -72,12 +73,15 @@ class IndicatorEngine:
 
     def __init__(
         self,
-        backend: str | BackendProtocol = "pandas",
+        backend: str | BackendProtocol | None = None,
         on_error: Literal["raise", "skip"] = "raise",
     ) -> None:
         self._all_backends = _register_builtin_backends()
         self._on_error = on_error
         self._last_report: list[IndicatorError] = []
+
+        if backend is None:
+            backend = _resolve_default_backend()
 
         if isinstance(backend, str):
             if backend not in self._all_backends:
@@ -90,6 +94,32 @@ class IndicatorEngine:
             self._primary_backend = backend
 
         self._default_backend: BackendProtocol = self._all_backends["pandas"]
+
+    # --- backend property ---
+
+    @property
+    def backend(self) -> str:
+        """Return the name of the current primary backend."""
+        return self._primary_backend.name
+
+    @backend.setter
+    def backend(self, value: str | BackendProtocol) -> None:
+        """Switch the primary backend at runtime.
+
+        Parameters
+        ----------
+        value:
+            Backend name (e.g. "talib") or a custom BackendProtocol instance.
+        """
+        if isinstance(value, str):
+            if value not in self._all_backends:
+                raise ValueError(
+                    f"Unknown backend '{value}'. "
+                    f"Available: {list(self._all_backends)}"
+                )
+            self._primary_backend = self._all_backends[value]
+        else:
+            self._primary_backend = value
 
     # --- backend resolution ---
 
@@ -113,6 +143,21 @@ class IndicatorEngine:
             indicator_name, self._primary_backend.name
         )
 
+    def _resolve_backend_override(
+        self, backend: str | BackendProtocol | None
+    ) -> BackendProtocol | None:
+        """Resolve a _backend override value to a BackendProtocol, or None."""
+        if backend is None:
+            return None
+        if isinstance(backend, str):
+            if backend not in self._all_backends:
+                raise ValueError(
+                    f"Unknown backend '{backend}'. "
+                    f"Available: {list(self._all_backends)}"
+                )
+            return self._all_backends[backend]
+        return backend
+
     # --- core execution ---
 
     def _execute_node(
@@ -121,6 +166,7 @@ class IndicatorEngine:
         params: dict[str, Any],
         output_names: list[str],
         df: pd.DataFrame,
+        backend_override: BackendProtocol | None = None,
     ) -> None:
         """Compute one indicator and write results into df in-place."""
         meta = get_registry().get(indicator_name)
@@ -141,14 +187,17 @@ class IndicatorEngine:
             else:
                 raise MissingColumnError(col.name, indicator_name)
 
-        # Also provide the compute function's own compute_fn if user-registered
-        # (backed stored under "_fn"); use it when neither primary nor default supports
-        # User-defined indicators (registered via decorator) use _fn directly
+        # User-defined indicators (_fn) always use _fn directly,
+        # ignoring any backend_override (per Decision 5).
         if "_fn" in meta.backends and not self._primary_backend.supports(indicator_name) \
                 and not self._default_backend.supports(indicator_name):
             result = meta.backends["_fn"](**{
                 c.name: inputs[c.name] for c in requires
             }, **params)
+        elif backend_override is not None:
+            result = nan_safe_compute(
+                backend_override, indicator_name, inputs, params, output_names, len(df)
+            )
         else:
             backend = self._resolve_backend(indicator_name)
             result = nan_safe_compute(
@@ -171,10 +220,11 @@ class IndicatorEngine:
         indicator_name: str,
         params: dict[str, Any],
         df: pd.DataFrame,
+        backend_override: BackendProtocol | None = None,
     ) -> float:
         meta = get_registry().get(indicator_name)
 
-        # Resolve dependencies first
+        # Resolve dependencies first (backend_override does NOT propagate to deps)
         self._run_dag(indicator_name, params, df, on_error="raise")
 
         requires = (
@@ -194,6 +244,8 @@ class IndicatorEngine:
             return meta.backends["_fn"](**{
                 c.name: inputs[c.name] for c in requires
             }, **params)
+        if backend_override is not None:
+            return backend_override.compute(indicator_name, inputs, params)  # type: ignore[return-value]
         backend = self._resolve_backend(indicator_name)
         return backend.compute(indicator_name, inputs, params)  # type: ignore[return-value]
 
@@ -203,6 +255,7 @@ class IndicatorEngine:
         params: dict[str, Any],
         df: pd.DataFrame,
         on_error: Literal["raise", "skip"],
+        backend_override: BackendProtocol | None = None,
     ) -> list[IndicatorError]:
         dag = DependencyGraph(get_registry())
         output_names = dag.add(indicator_name, dict(params))
@@ -217,9 +270,13 @@ class IndicatorEngine:
                 skipped.update(node.output_names)
                 continue
 
+            # backend_override applies only to the target node, not deps
+            node_backend = backend_override if node.indicator_name == indicator_name else None
+
             try:
                 self._execute_node(
-                    node.indicator_name, node.params, node.output_names, df
+                    node.indicator_name, node.params, node.output_names, df,
+                    backend_override=node_backend,
                 )
             except Exception as exc:
                 if on_error == "raise":
@@ -241,10 +298,12 @@ class IndicatorEngine:
 
         def _call(df: pd.DataFrame, **kwargs: Any) -> Any:
             meta = registry.get(name)
+            backend_override = kwargs.pop("_backend", None)
+            _resolve_override = self._resolve_backend_override(backend_override)
             if meta.indicator_type == "scalar":
-                return self._execute_scalar(name, kwargs, df)
+                return self._execute_scalar(name, kwargs, df, backend_override=_resolve_override)
             # Column indicator
-            errors = self._run_dag(name, kwargs, df, on_error=self._on_error)
+            errors = self._run_dag(name, kwargs, df, on_error=self._on_error, backend_override=_resolve_override)
             self._last_report = errors
             return df
 
@@ -293,7 +352,7 @@ class Pipe:
         self._df = df
         self._engine = engine
         self._on_error = on_error
-        self._pending: list[tuple[str, dict[str, Any]]] = []
+        self._pending: list[tuple[str, dict[str, Any], BackendProtocol | None]] = []
         self._errors: list[IndicatorError] = []
 
     def __getattr__(self, name: str) -> Any:
@@ -308,16 +367,24 @@ class Pipe:
             )
 
         def _chain(**kwargs: Any) -> "Pipe":
-            self._pending.append((name, kwargs))
+            backend_raw = kwargs.pop("_backend", None)
+            backend_override = self._engine._resolve_backend_override(backend_raw)
+            self._pending.append((name, kwargs, backend_override))
             return self
 
         return _chain
 
     def result(self) -> pd.DataFrame:
         """Execute all pending indicator calls and return the mutated df."""
+        # Build a map: indicator_name -> backend_override for per-step overrides
+        per_indicator_backend: dict[str, BackendProtocol | None] = {}
+        for ind_name, params, backend_override in self._pending:
+            if backend_override is not None:
+                per_indicator_backend[ind_name] = backend_override
+
         # Build a single unified DAG across all pending calls
         dag = DependencyGraph(get_registry())
-        for ind_name, params in self._pending:
+        for ind_name, params, _backend_override in self._pending:
             dag.add(ind_name, dict(params))
 
         plan = dag.build_execution_plan(self._df)
@@ -327,9 +394,12 @@ class Pipe:
             if any(c.name in skipped for c in node.requires if c.indicator):
                 skipped.update(node.output_names)
                 continue
+            # Per-step backend override: only for target indicators, not deps
+            node_backend = per_indicator_backend.get(node.indicator_name)
             try:
                 self._engine._execute_node(
-                    node.indicator_name, node.params, node.output_names, self._df
+                    node.indicator_name, node.params, node.output_names, self._df,
+                    backend_override=node_backend,
                 )
             except Exception as exc:
                 if self._on_error == "raise":
