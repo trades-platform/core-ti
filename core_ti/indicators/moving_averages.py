@@ -1,8 +1,10 @@
 """Moving average indicators: SMA, EMA, WMA."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
+from .._rolling import roll_mean
 from ..registry import register
 from ..schema import Column
 
@@ -15,7 +17,7 @@ from ..schema import Column
 )
 def sma(close: pd.Series, period: int = 20) -> pd.Series:
     """Simple Moving Average."""
-    return close.rolling(period).mean()
+    return roll_mean(close, period)
 
 
 @register.column(
@@ -37,7 +39,6 @@ def ema(close: pd.Series, period: int = 20) -> pd.Series:
 )
 def wma(close: pd.Series, period: int = 20) -> pd.Series:
     """Weighted Moving Average (linearly weighted)."""
-    import numpy as np
     weights = np.arange(1, period + 1, dtype=float)
     values = close.to_numpy(dtype=float)
     n = values.shape[0]

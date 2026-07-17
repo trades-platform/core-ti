@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from .._rolling import roll_mean, roll_std
 from .base import BackendProtocol
 
 
@@ -20,8 +21,7 @@ from .base import BackendProtocol
 # ---------------------------------------------------------------------------
 
 def _sma(inputs: dict, params: dict) -> pd.Series:
-    close = inputs["close"]
-    return close.rolling(params["period"]).mean()
+    return roll_mean(inputs["close"], params["period"])
 
 
 def _ema(inputs: dict, params: dict) -> pd.Series:
@@ -60,9 +60,9 @@ def _bb(inputs: dict, params: dict) -> pd.DataFrame:
     close = inputs["close"]
     period = params["period"]
     std_mult = params["std"]
-    mid = close.rolling(period).mean()
-    std = close.rolling(period).std()
-    p = params["period"]
+    mid = roll_mean(close, period)
+    std = roll_std(close, period)
+    p = period
     return pd.DataFrame({
         f"bb_{p}_upper": mid + std_mult * std,
         f"bb_{p}_mid": mid,

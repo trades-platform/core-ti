@@ -4,6 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from .._rolling import roll_mean, roll_std
 from ..registry import register
 from ..schema import Column
 
@@ -16,8 +17,8 @@ from ..schema import Column
 )
 def bb(close: pd.Series, period: int = 20, std: float = 2.0) -> pd.DataFrame:
     """Bollinger Bands (upper, mid, lower)."""
-    mid = close.rolling(period).mean()
-    s = close.rolling(period).std()
+    mid = roll_mean(close, period)
+    s = roll_std(close, period)
     return pd.DataFrame({
         f"bb_{period}_upper": mid + std * s,
         f"bb_{period}_mid": mid,
