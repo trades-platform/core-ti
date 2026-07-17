@@ -1,6 +1,7 @@
 """Volatility indicators: Bollinger Bands, ATR."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 from ..registry import register
@@ -38,10 +39,11 @@ def atr(
     high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
 ) -> pd.Series:
     """Average True Range."""
-    prev_close = close.shift(1)
-    tr = pd.concat([
-        high - low,
-        (high - prev_close).abs(),
-        (low - prev_close).abs(),
-    ], axis=1).max(axis=1)
-    return tr.ewm(com=period - 1, adjust=False).mean()
+    h = high.to_numpy(dtype=float)
+    l = low.to_numpy(dtype=float)
+    c = close.to_numpy(dtype=float)
+    prev = np.empty_like(c)
+    prev[:1] = np.nan
+    prev[1:] = c[:-1]
+    tr = np.fmax(h - l, np.fmax(np.abs(h - prev), np.abs(l - prev)))
+    return pd.Series(tr, index=close.index).ewm(com=period - 1, adjust=False).mean()

@@ -33,19 +33,25 @@ def _wma(inputs: dict, params: dict) -> pd.Series:
     close = inputs["close"]
     period = params["period"]
     weights = np.arange(1, period + 1, dtype=float)
-
-    def _wma_apply(x: np.ndarray) -> float:
-        return float(np.dot(x, weights) / weights.sum())
-
-    return close.rolling(period).apply(_wma_apply, raw=True)
+    values = close.to_numpy(dtype=float)
+    n = values.shape[0]
+    out = np.full(n, np.nan)
+    if n >= period:
+        windows = np.lib.stride_tricks.sliding_window_view(values, period)
+        out[period - 1:] = windows @ weights / weights.sum()
+    return pd.Series(out, index=close.index, name=close.name)
 
 
 def _rsi(inputs: dict, params: dict) -> pd.Series:
     close = inputs["close"]
     period = params["period"]
-    delta = close.diff()
-    gain = delta.where(delta > 0, 0.0).ewm(com=period - 1, adjust=False).mean()
-    loss = (-delta.where(delta < 0, 0.0)).ewm(com=period - 1, adjust=False).mean()
+    delta = close.diff().to_numpy()
+    gain = pd.Series(np.where(delta > 0, delta, 0.0), index=close.index).ewm(
+        com=period - 1, adjust=False
+    ).mean()
+    loss = pd.Series(np.where(delta < 0, -delta, 0.0), index=close.index).ewm(
+        com=period - 1, adjust=False
+    ).mean()
     rs = gain / loss.replace(0, np.nan)
     return 100 - (100 / (1 + rs))
 
@@ -69,13 +75,14 @@ def _atr(inputs: dict, params: dict) -> pd.Series:
     low = inputs["low"]
     close = inputs["close"]
     period = params["period"]
-    prev_close = close.shift(1)
-    tr = pd.concat([
-        high - low,
-        (high - prev_close).abs(),
-        (low - prev_close).abs(),
-    ], axis=1).max(axis=1)
-    return tr.ewm(com=period - 1, adjust=False).mean()
+    h = high.to_numpy(dtype=float)
+    l = low.to_numpy(dtype=float)
+    c = close.to_numpy(dtype=float)
+    prev = np.empty_like(c)
+    prev[:1] = np.nan
+    prev[1:] = c[:-1]
+    tr = np.fmax(h - l, np.fmax(np.abs(h - prev), np.abs(l - prev)))
+    return pd.Series(tr, index=close.index).ewm(com=period - 1, adjust=False).mean()
 
 
 def _macd(inputs: dict, params: dict) -> pd.DataFrame:

@@ -39,6 +39,10 @@ def wma(close: pd.Series, period: int = 20) -> pd.Series:
     """Weighted Moving Average (linearly weighted)."""
     import numpy as np
     weights = np.arange(1, period + 1, dtype=float)
-    return close.rolling(period).apply(
-        lambda x: float(np.dot(x, weights) / weights.sum()), raw=True
-    )
+    values = close.to_numpy(dtype=float)
+    n = values.shape[0]
+    out = np.full(n, np.nan)
+    if n >= period:
+        windows = np.lib.stride_tricks.sliding_window_view(values, period)
+        out[period - 1:] = windows @ weights / weights.sum()
+    return pd.Series(out, index=close.index, name=close.name)
