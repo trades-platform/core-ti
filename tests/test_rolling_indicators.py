@@ -54,7 +54,9 @@ def test_bb_matches_rolling(period, n):
 
 @pytest.mark.parametrize("period", [3, 14])
 def test_sma_bb_match_rolling_with_nan_inputs(period):
-    x = _make_close(80).to_numpy()
+    # copy=True: pandas_ta enables Copy-on-Write process-wide at import, under
+    # which to_numpy() returns a read-only view that can't be mutated in place.
+    x = _make_close(80).to_numpy(copy=True)
     x[[5, 6, 40, 41, 42]] = np.nan
     close = pd.Series(x)
     assert np.allclose(
@@ -97,7 +99,8 @@ def test_index_and_name_preserved():
 def test_inf_inputs_match_rolling(period):
     # +/-inf must not poison later windows (bottleneck running-sum corruption):
     # parity with rolling is required.
-    base = _make_close(40).to_numpy()
+    # copy=True for a writable array (see test_sma_bb_match_rolling_with_nan_inputs).
+    base = _make_close(40).to_numpy(copy=True)
     base[10] = np.inf
     base[25] = -np.inf
     close = pd.Series(base)
